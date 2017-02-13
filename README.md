@@ -1,5 +1,6 @@
-# ${1:MapReduce implementation of distributed systems in Golang}
+## MapReduce implementation of distributed systems in Golang
 This project is inspired by the MIT course [6.824: Distributed Systems](https://pdos.csail.mit.edu/6.824/index.html) and most of the code is from the course lab assignment. I am getting familiar with the original code and the current reimplementation is single sequential. More work to be continued.
+
 TODO: Sequential Many
 ## Usage
 ```
