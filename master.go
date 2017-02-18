@@ -25,6 +25,19 @@ type Master struct {
 	stats []int
 }
 
+// Register is an RPC method that is called by workers after they have started 
+// up to report that they are ready to receive tasks.
+func (mr *Master) Register(args *RegisterArgs, _ *struct{}) error {
+	mr.Lock()
+	defer mr.Unlock()
+	debug("Register: worker %s\n", args.Worker)
+	mr.workers = append(mr.workers, args.Worker)
+	go func() {
+		mr.registerChannel <- args.Worker
+	}()
+	return nil
+}
+
 // newMaster initialize a new Map/Reduce Master
 func newMaster(master string) (mr *Master) {
 	mr = new(Master)
@@ -58,6 +71,17 @@ func Sequential(jobName string, files []string, nreduce int,
 	return
 }
 
+//Distributed schedules map and reduce tasks on workers that register with the 
+// master over RPC
+func Distributed(jobName string, files []string, nreduce int, master string) (mr *Master) {
+	mr = newMaster(master)
+	mr.startRPCServer()
+	go mr.run(jobName, files, nreduce, mr.schedule, func() {
+		mr.stats = mr.killWorkers()
+		mr.stopRPCServer()
+		})
+	return
+}
 // run executes a mapreduce job on the given number of mappers and reducers
 //
 func (mr *Master) run(jobName string, files []string, nreduce int,
@@ -85,4 +109,23 @@ func (mr *Master) run(jobName string, files []string, nreduce int,
 // have been computed, and all workers have been shut down.
 func (mr *Master) Wait() {
 	<-mr.doneChannel
+}
+
+// killWorkers cleans up all workers by sending each one a Shutdown RPC.
+// It also collects and returns the number of tasks each worker has performed.
+func (mr *Master) killWorkers() []int {
+	mr.Lock() // lock to ensure exclusive access
+	defer mr.Unlock()
+	ntasks := make([]int, 0, len(mr.workers))
+	for _, w := range mr.workers {
+		debug("Master: shutdown worker %s\n", w)
+		var reply ShutdownReply
+		ok := call(w, "Worker.Shutdown", new(struct{}), &reply)
+		if ok == false {
+			fmt.Printf("Master: RPC %s shutdown error\n", w)
+		} else {
+			ntasks = append(ntasks, reply.Ntasks)
+		}
+	}
+	return ntasks
 }

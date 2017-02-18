@@ -8,7 +8,7 @@ import (
 	"log"
 	"os"
 	"sort"
-	//"strconv"
+	"strconv"
 	"strings"
 )
 
@@ -23,7 +23,7 @@ const (
 
 // Split in words
 func MapFunc(file string, value string) (res []KeyValue) {
-	debug("Map %v\n", value)
+	//debug("Map %v\n", value)
 	words := strings.Fields(value)
 	for _, w := range words {
 		kv := KeyValue{w, ""}
@@ -34,9 +34,9 @@ func MapFunc(file string, value string) (res []KeyValue) {
 
 // Just return key
 func ReduceFunc(key string, values []string) string {
-	for _, e := range values {
-		debug("Reduce %s %v\n", key, e)
-	}
+	// for _, e := range values {
+	// 	debug("Reduce %s %v\n", key, e)
+	// }
 	return ""
 }
 
@@ -115,6 +115,25 @@ func makeInputs(num int) []string {
 	return names
 }
 
+// Cook up a unique-ish Unix-domain socket name
+// in /var/tmp. can't use current directory since 
+// AFS does not support Unix-domain sockets.
+func port(suffix string) string {
+	s := "/var/tmp/824-"
+	s += strconv.Itoa(os.Getuid()) + "/"
+	os.Mkdir(s, 0777)
+	s += "mr"
+	s += strconv.Itoa(os.Getpid()) + "-"
+	s += suffix
+	return s
+}
+
+func setup() *Master {
+	files := makeInputs(nMap)
+	master := port("master")
+	mr := Distributed("test", files, nReduce, master)
+	return mr
+}
 func cleanup(mr *Master) {
 	mr.CleanupFiles()
 	for _, f := range mr.files {
@@ -132,6 +151,18 @@ func TestSequentialSingle(t *testing.T) {
 
 func TestSequentialMany(t *testing.T) {
 	mr := Sequential("test", makeInputs(5), 3, MapFunc, ReduceFunc)
+	mr.Wait()
+	check(t, mr.files)
+	checkWorker(t, mr.stats)
+	cleanup(mr)
+}
+
+func TestBasic(t *testing.T) {
+	mr := setup()
+	for i := 0; i < 2; i++ {
+		go RunWorker(mr.address, port("worker"+strconv.Itoa(i)),
+			MapFunc, ReduceFunc, -1)
+	}
 	mr.Wait()
 	check(t, mr.files)
 	checkWorker(t, mr.stats)
