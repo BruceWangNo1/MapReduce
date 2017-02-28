@@ -1,12 +1,13 @@
 ## MapReduce implementation of distributed systems in Golang
-This project is inspired by the MIT course [6.824: Distributed Systems](https://pdos.csail.mit.edu/6.824/index.html) and most of the code is from the course lab assignment. I am getting familiar with the original code and the current reimplementation is TestBasic. More work to be continued.
+This project is inspired by the MIT course [6.824: Distributed Systems](https://pdos.csail.mit.edu/6.824/index.html) and most of the code is from the course lab assignment.
 
-TODO: Sequential Many
+No future update. Moved to [MapReduce-With-Amazon_S3](https://github.com/BruceWangNo1/MapReduce-With-Amazon_S3).
 ## Usage
 ```
 go test -run SequentialMany
 go test -run Sequential
 go test -run TestBasic
+go test -run Failure
 ```
 ## Contributing
 1. Fork it!
